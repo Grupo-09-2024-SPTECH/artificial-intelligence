@@ -1,5 +1,7 @@
 {
     "conventionalCommits.scopes": [
-        "function"
+        "function",
+        "manipulate_data",
+        "analysis"
     ]
 }
