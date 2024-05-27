@@ -14,8 +14,8 @@ def get_conn(env='dev'):
     elif env == 'prd':
         # Conectar ao banco de dados MySQL
         conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
+            host="adoptaidb.c9v2lvhlu1ya.us-east-1.rds.amazonaws.com",
+            user="admin",
             password="urubu100",
             database="adoptaidb"
         )
@@ -47,7 +47,6 @@ def insert_hyperparameter(cursor, fk_execucao, nome_parametro, vl_parametro):
     if len(nome_parametro) > 0:
 
         for i in range(0, len(nome_parametro)):
-            print(fk_execucao, nome_parametro[i], vl_parametro[i])
             insert_query = '''INSERT INTO tb_hiperparametro (fk_execucao, nome_parametro, vl_parametro)
             VALUES (%s, %s, %s)'''
         
@@ -68,6 +67,8 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
     conn = get_conn(env=env)
     cursor = conn.cursor()
 
+    print(f'Executando em {env}')
+
     # Inserindo dados nas tabelas
     id_model = insert_model(cursor, model['nome_modelo'], model['nome_fonte'])
     id_execution = insert_execution(cursor, id_model, execution['accuracy'], execution['start_time'], execution['end_time'])
@@ -77,3 +78,5 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
     # Commit das alterações no banco de dados
     conn.commit()
     conn.close()
+
+    print('Registros inseridos')
