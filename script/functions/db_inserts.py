@@ -76,3 +76,4 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
 
     # Commit das alterações no banco de dados
     conn.commit()
+    conn.close()
