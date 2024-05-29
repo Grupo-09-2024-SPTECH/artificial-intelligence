@@ -44,13 +44,9 @@ def insert_execution(cursor, fk_modelo, vl_accuracy, dt_inicio_exec, dt_fim_exec
 
 # Função para inserir dados na tabela tb_hiperparametro
 def insert_hyperparameter(cursor, fk_execucao, nome_parametro, vl_parametro):
-    if len(nome_parametro) > 0:
-
-        for i in range(0, len(nome_parametro)):
-            insert_query = '''INSERT INTO tb_hiperparametro (fk_execucao, nome_parametro, vl_parametro)
-            VALUES (%s, %s, %s)'''
-        
-            cursor.execute(insert_query, (fk_execucao, nome_parametro[i], vl_parametro[i]))
+        insert_query = '''INSERT INTO tb_hiperparametro (fk_execucao, nome_parametro, vl_parametro)
+        VALUES (%s, %s, %s)'''
+        cursor.execute(insert_query, (fk_execucao, nome_parametro, vl_parametro))
 
 # Função para inserir dados na tabela tb_desempenho
 def insert_performance(cursor, fk_execucao, vl_precision, vl_recall, vl_f1_score):
@@ -63,20 +59,28 @@ def insert_performance(cursor, fk_execucao, vl_precision, vl_recall, vl_f1_score
             cursor.execute(insert_query, (fk_execucao, i, vl_precision[i], vl_recall[i], vl_f1_score[i]))
 
 def insert_values(model, execution, hyperparam, performance, env='dev'):
-    # connection
+    # # connection
     conn = get_conn(env=env)
     cursor = conn.cursor()
 
     print(f'Executando em {env}')
 
-    # Inserindo dados nas tabelas
-    id_model = insert_model(cursor, model['nome_modelo'], model['nome_fonte'])
-    id_execution = insert_execution(cursor, id_model, execution['accuracy'], execution['start_time'], execution['end_time'])
-    insert_hyperparameter(cursor, id_execution, hyperparam['param_name_values'], hyperparam['param_value_values'])
-    insert_performance(cursor, id_execution, performance['precision_values'], performance['recall_values'], performance['f1_values'])
+    try:
+        # Inserindo dados nas tabelas
+        id_model = insert_model(cursor, model['nome_modelo'], model['nome_fonte'])
 
-    # Commit das alterações no banco de dados
-    conn.commit()
-    conn.close()
+        for i in range(len(execution['accuracy'])):
+            id_execution = insert_execution(cursor, id_model, execution['accuracy'][i], execution['start_time'], execution['end_time'])
 
-    print('Registros inseridos')
+            insert_performance(cursor, id_execution, performance['precision_values'][i], performance['recall_values'][i], performance['f1_values'][i])
+            for j in range(len(list(hyperparam.keys()))):
+                param = list(hyperparam.keys())[j]
+                insert_hyperparameter(cursor, id_execution, param, hyperparam[param][i])
+
+        # # Commit das alterações no banco de dados
+        conn.commit()
+    except Exception:
+        print(f'Erro ao inserir em {env}')
+    finally:
+        conn.close()
+        print('Registros inseridos')
