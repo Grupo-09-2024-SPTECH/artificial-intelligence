@@ -13,7 +13,7 @@ def remove_ids(df):
 # Removendo colunas muito variadas (Descrições, Nomes)
 def remove_variable_columns(df):
     # Definir o limiar para o número de valores únicos em relação ao tamanho do conjunto de dados
-    limiar_valores_unicos = 0.5  # Por exemplo, 50% dos valores únicos
+    limiar_valores_unicos = 0.7  # Por exemplo, 50% dos valores únicos
 
     # Identificar colunas descritivas com muitos valores únicos
     colunas_descritivas = [coluna for coluna in df.columns if df[coluna].nunique() / len(df) > limiar_valores_unicos]

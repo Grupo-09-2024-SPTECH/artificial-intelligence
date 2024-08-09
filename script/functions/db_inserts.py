@@ -70,7 +70,7 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
         id_model = insert_model(cursor, model['nome_modelo'], model['nome_fonte'])
 
         for i in range(len(execution['accuracy'])):
-            id_execution = insert_execution(cursor, id_model, execution['accuracy'][i], execution['start_time'], execution['end_time'])
+            id_execution = insert_execution(cursor, id_model, execution['accuracy'][i], execution['start_time'][i], execution['end_time'][i])
 
             insert_performance(cursor, id_execution, performance['precision_values'][i], performance['recall_values'][i], performance['f1_values'][i])
             for j in range(len(list(hyperparam.keys()))):
