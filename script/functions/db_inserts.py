@@ -23,12 +23,23 @@ def get_conn(env='dev'):
 
 # Função para inserir dados na tabela tb_modelo
 def insert_model(cursor, nome_modelo, nome_base):
-    insert_query = '''
-        INSERT INTO tb_modelo (nome_modelo, nome_base)
-        VALUES (%s, %s)
-    '''
-    cursor.execute(insert_query, (nome_modelo, nome_base))
-    return cursor.lastrowid
+    # verify if model already exists
+    select_query = f"SELECT * FROM tb_modelo WHERE nome_modelo LIKE '{nome_modelo}'"
+    cursor.execute(select_query)
+
+    response = cursor.fetchall()
+
+    if (len(response) == 0):
+        # creating model
+        insert_query = '''
+            INSERT INTO tb_modelo (nome_modelo, nome_base)
+            VALUES (%s, %s)
+        '''
+        cursor.execute(insert_query, (nome_modelo, nome_base))
+        return cursor.lastrowid
+    else:
+        # in this case, model already exists, so it returns your id
+        return response[0][0]
 
 # Função para inserir dados na tabela tb_execucao
 def insert_execution(cursor, fk_modelo, vl_accuracy, dt_inicio_exec, dt_fim_exec):
