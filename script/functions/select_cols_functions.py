@@ -1,4 +1,3 @@
-import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 # Função para remover colunas que provavelmente são IDs
@@ -10,7 +9,7 @@ def remove_ids(df):
     dados_processados = df.drop(columns=colunas_unicas)
     return dados_processados
 
-# Função para remover colunas com alta variabilidade, como descrições ou nomes
+# Função para remover colunas com alta variabilidade, como descrições
 def remove_variable_columns(df):
     # Define o limite para o número de valores únicos em uma coluna, relativo ao tamanho do DataFrame
     limiar_valores_unicos = 0.7  # Exemplo: remove colunas onde mais de 70% dos valores são únicos
@@ -37,12 +36,16 @@ def adjust_categoric_values(df):
     
     return df
 
+def remove_unused_columns(df):
+    columns_to_remove = ['Name', 'RescuerID']
+    return df.drop(columns=columns_to_remove)
+
 # Função para aplicar todas as regras de limpeza e ajuste de dados
 def apply_all_rules(df):
     # Aplica a remoção de colunas de IDs
     df = remove_ids(df)
     # Aplica a remoção de colunas com alta variabilidade
     df = remove_variable_columns(df)
-    # Ajusta as colunas categóricas
-    df = adjust_categoric_values(df)
+    # Aplica remoção de colunas que não serão utilizadas pelos modelos
+    df = remove_unused_columns(df)
     return df
