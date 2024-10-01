@@ -2,128 +2,120 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
 import mysql.connector
+import env  # Importa o arquivo env.py para as credenciais do banco de dados
 
-#
 # ------------------ BANCO -----------------------
-#
 conn = mysql.connector.connect(
-    host="adoptaidb.c9v2lvhlu1ya.us-east-1.rds.amazonaws.com",
-    user="admin",
-    password="urubu100",
-    database="adoptaidb"
+    host=env.DB_HOST,
+    user=env.DB_USER,
+    password=env.DB_PASSWORD,
+    database=env.DB_NAME
 )
 
 cursor = conn.cursor()
-
 query = "SELECT * FROM vw_modelo_desempenho"
 cursor.execute(query)
-
 rows = cursor.fetchall()
 columns = [i[0] for i in cursor.description]
 df_original = pd.DataFrame(rows, columns=columns)
 
-df = df_original
-
-df['nome_modelo'] = df['nome_modelo'].replace('Decision Tree (Entropy)', 'Decision Tree') 
-df['nome_modelo'] = df['nome_modelo'].replace('SVC Linear - gamma Scale', 'SVC Linear')
-
+# Fechar a conexão
 cursor.close()
 conn.close()
 
+# Aplicar ajustes no DataFrame, se necessário
+df = df_original.copy()
+df['nome_modelo'] = df['nome_modelo'].replace('Decision Tree (Entropy)', 'Decision Tree') 
+df['nome_modelo'] = df['nome_modelo'].replace('SVC Linear - gamma Scale', 'SVC Linear')
+
+# --------------- Criar Filtros ---------------
+# Filtro para a coluna 'nome_modelo'
+modelos_disponiveis = df['nome_modelo'].unique()
+
+# Iniciar com apenas um modelo selecionado (primeiro da lista)
+modelo_inicial = [modelos_disponiveis[0]] if len(modelos_disponiveis) > 0 else []
+
+modelos_selecionados = st.multiselect('Selecione o(s) modelo(s):', modelos_disponiveis, default=modelo_inicial)
+
+# Filtro para a coluna 'nome_base'
+bases_disponiveis = df['nome_base'].unique()
+base_selecionada = st.selectbox('Selecione a base:', bases_disponiveis)
+
+parametros_selecionados = {}
+for modelo in modelos_selecionados:
+    # Obter os valores únicos de `vl_parametro` para o modelo selecionado
+    valores_parametro = df[df['nome_modelo'] == modelo]['vl_parametro'].unique()
+    # Usar select para selecionar um único parâmetro
+    parametros_selecionados[modelo] = st.selectbox(f'Selecione um parâmetro para {modelo}:', valores_parametro)
+
+# Aplicar Filtros ao DataFrame
+df_filtrado = df[
+    (df['nome_modelo'].isin(modelos_selecionados)) &
+    (df['nome_base'] == base_selecionada) &
+    (df.apply(lambda x: x['nome_modelo'] in parametros_selecionados and x['vl_parametro'] == parametros_selecionados[x['nome_modelo']], axis=1))
+]
 
 
-#
-# ------------------ Exibição Comparativa -----------------------
-#
-st.title('Modelos de Previsão de adoção')
+# --------------- Checkbox para Seleção de Métricas ---------------
+st.write("Selecione as métricas que deseja visualizar:")
 
-st.subheader('Dados da View: vw_modelo_desempenho')
-st.dataframe(df_original)
+# Lista das métricas disponíveis
+metricas = ['vl_accuracy', 'vl_f1_score', 'vl_precision', 'vl_recall']
+metricas_selecionadas = []
 
-best_accuracy_df = df.loc[df.groupby('nome_modelo')['vl_accuracy'].idxmax()].reset_index(drop=True)
+# Loop para gerar um checkbox para cada métrica
+for metrica in metricas:
+    if st.checkbox(metrica, value=True):
+        metricas_selecionadas.append(metrica)
 
-metrics = ['vl_accuracy', 'vl_precision', 'vl_recall', 'vl_f1_score']
-metric_labels = ['Acurácia', 'Precisão', 'Recall', 'F1 Score']
-
-metric_data = best_accuracy_df.set_index('nome_modelo')[metrics]
-
-st.subheader('Melhores scores por Modelo')
-fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(14, 10))
-fig.tight_layout(pad=5.0) 
-
-for i, (metric, label) in enumerate(zip(metrics, metric_labels)):
-    ax = axs[i // 2, i % 2]
-    bars = ax.bar(metric_data.index, metric_data[metric])
-    ax.set_title(label)
-    ax.set_xlabel('Modelos')
-    ax.set_ylabel('Valor')
-    ax.set_ylim(0, 1)
+# --------------- Gráficos Separados por Classe ---------------
+if metricas_selecionadas and not df_filtrado.empty:
+    # Obter as classes únicas
+    classes_unicas = df_filtrado['tp_classe'].unique()
     
-    for bar in bars:
-        height = bar.get_height()
-        ax.annotate(f'{height:.2f}', 
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),
-                    textcoords="offset points",
-                    ha='center', va='bottom')
+    for classe in classes_unicas:
+        st.write(f"## Gráfico para a Classe: {classe}")
+        # Filtrar pelo tipo de classe
+        df_classe = df_filtrado[df_filtrado['tp_classe'] == classe]
+
+        # Configurar o tamanho do gráfico
+        plt.figure(figsize=(12, 6))
         
-st.pyplot(fig)
+        # Definir posição e largura das barras
+        n_metricas = len(metricas_selecionadas)
+        largura_barras = 0.2
+        posicoes = list(range(len(df_classe['nome_modelo'].unique())))  # Número de modelos únicos
 
+        # Desenhar as barras para cada métrica
+        for i, metrica in enumerate(metricas_selecionadas):
+            barras = plt.bar(
+                [p + i * largura_barras for p in posicoes], 
+                df_classe.groupby('nome_modelo')[metrica].mean(),  # Média da métrica para cada modelo
+                width=largura_barras
+            )
 
-df['data_inicio'] = pd.to_datetime(df['dt_inicio_exec'])
-df['data_fim'] = pd.to_datetime(df['dt_fim_exec'])
+            # Adicionar os valores acima das barras
+            for barra in barras:
+                yval = barra.get_height()  # Altura da barra
+                plt.text(
+                    barra.get_x() + barra.get_width() / 2,  # Posição x (centro da barra)
+                    yval,  # Posição y (altura da barra)
+                    round(yval, 2),  # Valor a ser exibido (arredondado a 2 casas decimais)
+                    ha='center',  # Alinhamento horizontal
+                    va='bottom'   # Alinhamento vertical
+                )
 
+        # Configurar o eixo x com os nomes dos modelos
+        plt.xticks([p + largura_barras * (n_metricas - 1) / 2 for p in posicoes], df_classe['nome_modelo'].unique())
 
-df['diferenca'] = df['dt_fim_exec'] - df['dt_inicio_exec']
+        # Exibir os parâmetros selecionados para cada modelo no título
+        parametros_str = ', '.join([f"{modelo}: {parametros_selecionados[modelo]}" for modelo in modelos_selecionados])
+        
+        # Legenda e rótulos
+        plt.xlabel('Modelos')
+        plt.ylabel('Valor da Métrica')
+        plt.title(f'Comparação de Métricas para Modelos Selecionados - Parâmetros: {parametros_str} - Classe: {classe}')
+        plt.legend(metricas_selecionadas, loc='upper left', bbox_to_anchor=(1, 1))
 
-
-df['horas'] = df['diferenca'].dt.components['hours']
-df['minutos'] = df['diferenca'].dt.components['minutes']
-df['segundos'] = df['diferenca'].dt.components['seconds']
-
-
-df['tempo_execucao'] = df.apply(lambda row: f"{int(row['horas']):02}:{int(row['minutos']):02}:{int(row['segundos']):02}", axis=1)
-
-def tempo_para_segundos(tempo_str):
-    h, m, s = map(int, tempo_str.split(':'))
-    return h * 3600 + m * 60 + s
-
-df['tempo_segundos'] = df['tempo_execucao'].apply(tempo_para_segundos)
-
-# Encontrar o melhor tempo de execução para cada modelo
-melhor_tempo_df = df.groupby('nome_modelo')['tempo_segundos'].min().reset_index()
-
-# Criar o gráfico de barras
-st.title('Comparação do Melhor Tempo de Execução entre Modelos')
-
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.bar(melhor_tempo_df['nome_modelo'], melhor_tempo_df['tempo_segundos'], color='#8b008b')
-
-# Adicionar rótulos de valor em cada barra
-for i, valor in enumerate(melhor_tempo_df['tempo_segundos']):
-    ax.text(i, valor + 0.1, f'{valor} s', ha='center', va='bottom')
-
-ax.set_title('Tempo de Execução por Modelo')
-ax.set_xlabel('Modelos')
-ax.set_ylabel('Tempo de Execução (segundos)')
-ax.set_ylim(0, melhor_tempo_df['tempo_segundos'].max() + 5)  # Ajusta o limite superior para melhor visualização
-
-# Exibir o gráfico no Streamlit
-st.pyplot(fig)
-
-#
-# ------------------ Exibição Interativa -----------------------
-#
-
-st.header("Escolha um modelo para visualizar as métricas:")
-modelo_selecionado = st.selectbox('', df['nome_modelo'].unique())
-
-# Filtrar o DataFrame para o modelo selecionado
-df_modelo = df_original[df_original['nome_modelo'] == modelo_selecionado]
-
-# Selecionar as colunas relevantes para exibição
-df_metrica = df_modelo[['nome_modelo','id_execucao','tempo_execucao','vl_accuracy','tp_classe', 'vl_precision', 'vl_recall', 'vl_f1_score']]
-
-# Exibir a tabela no Streamlit
-st.subheader(f'Métricas de Desempenho para o Modelo {modelo_selecionado}')
-st.dataframe(df_metrica)
+        # Exibir gráfico no Streamlit
+        st.pyplot(plt.gcf())
