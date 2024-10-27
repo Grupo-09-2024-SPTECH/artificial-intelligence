@@ -44,16 +44,16 @@ def insert_model(cursor, nome_modelo, nome_base):
         return response[0][0]
 
 # Função para inserir dados na tabela tb_execucao
-def insert_execution(cursor, fk_modelo, vl_accuracy, dt_inicio_exec, dt_fim_exec):
+def insert_execution(cursor, fk_modelo, vl_accuracy, vl_mae, vl_qwk, dt_inicio_exec, dt_fim_exec):
     # Converte os timestamps para o formato datetime do MySQL
     dt_inicio_exec = datetime.fromtimestamp(dt_inicio_exec).strftime('%Y-%m-%d %H:%M:%S')
     dt_fim_exec = datetime.fromtimestamp(dt_fim_exec).strftime('%Y-%m-%d %H:%M:%S')
 
     insert_query = '''
-        INSERT INTO tb_execucao (fk_modelo, vl_accuracy, dt_inicio_exec, dt_fim_exec)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO tb_execucao (fk_modelo, vl_accuracy, vl_mae, vl_qwk, dt_inicio_exec, dt_fim_exec)
+        VALUES (%s, %s, %s, %s, %s, %s)
     '''
-    cursor.execute(insert_query, (fk_modelo, vl_accuracy, dt_inicio_exec, dt_fim_exec))
+    cursor.execute(insert_query, (fk_modelo, vl_accuracy, vl_mae, vl_qwk, dt_inicio_exec, dt_fim_exec))
     return cursor.lastrowid # Retorna o ID da nova execução inserida
 
 # Função para inserir dados na tabela tb_hiperparametro
@@ -89,7 +89,15 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
 
         for i in range(len(execution['accuracy'])):
             # Inserindo dados na tabela tb_execucao
-            id_execution = insert_execution(cursor, id_model, execution['accuracy'][i], execution['start_time'][i], execution['end_time'][i])
+            id_execution = insert_execution(
+                cursor, 
+                id_model, 
+                execution['accuracy'][i], 
+                execution['mae'][i], 
+                execution['qwk'][i], 
+                execution['start_time'][i], 
+                execution['end_time'][i]
+                )
 
             # Inserindo dados na tabela tb_desempenho
             insert_performance(cursor, id_execution, performance['precision_values'][i], performance['recall_values'][i], performance['f1_values'][i])
@@ -100,10 +108,10 @@ def insert_values(model, execution, hyperparam, performance, env='dev'):
 
         # Commit das alterações no banco de dados
         conn.commit()
+        print(f'Registros inseridos em {env}')
     except Exception:
         # Caso ocorra algum erro, uma mensagem será exibida
         print(f'Erro ao inserir em {env}')
     finally:
         # Fecha a conexão com o banco de dados
         conn.close()
-        print(f'Registros inseridos em {env}')
