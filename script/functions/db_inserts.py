@@ -15,7 +15,7 @@ def get_conn(env='dev'):
     elif env == 'prd':
         # Conectar ao banco de dados MySQL no ambiente de produção
         conn = mysql.connector.connect(
-            host="adoptaidb.c9v2lvhlu1ya.us-east-1.rds.amazonaws.com",
+            host="adoptaidb.co19khhgwqgm.us-east-1.rds.amazonaws.com",
             user="admin",
             password="urubu100",
             database="adoptaidb"
