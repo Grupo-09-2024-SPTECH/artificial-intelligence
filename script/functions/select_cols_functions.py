@@ -25,7 +25,7 @@ def remove_variable_columns(df):
 def adjust_categoric_values(df):
     
     # Seleciona dinamicamente as colunas categóricas do DataFrame
-    colunas_categoricas = df.select_dtypes(include=['object']).columns
+    colunas_categoricas = df.select_dtypes(include=['object', 'bool']).columns
 
     # Inicializa o LabelEncoder, que converterá valores categóricos em valores numéricos
     label_encoder = LabelEncoder()
