@@ -12,7 +12,7 @@ def remove_ids(df):
 # Função para remover colunas com alta variabilidade, como descrições
 def remove_variable_columns(df):
     # Define o limite para o número de valores únicos em uma coluna, relativo ao tamanho do DataFrame
-    limiar_valores_unicos = 0.7  # Exemplo: remove colunas onde mais de 70% dos valores são únicos
+    limiar_valores_unicos = 0.6  # Exemplo: remove colunas onde mais de 60% dos valores são únicos
 
     # Identifica colunas que excedem o limite de valores únicos, geralmente descritivas
     colunas_descritivas = [coluna for coluna in df.columns if df[coluna].nunique() / len(df) > limiar_valores_unicos]
@@ -37,7 +37,7 @@ def adjust_categoric_values(df):
     return df
 
 def remove_unused_columns(df):
-    columns_to_remove = ['Name', 'RescuerID']
+    columns_to_remove = ['Name']
     return df.drop(columns=columns_to_remove)
 
 # Função para aplicar todas as regras de limpeza e ajuste de dados
@@ -45,7 +45,7 @@ def apply_all_rules(df):
     # Aplica a remoção de colunas de IDs
     df = remove_ids(df)
     # Aplica a remoção de colunas com alta variabilidade
-    df = remove_variable_columns(df)
+    # df = remove_variable_columns(df)
     # Aplica remoção de colunas que não serão utilizadas pelos modelos
     df = remove_unused_columns(df)
     return df
