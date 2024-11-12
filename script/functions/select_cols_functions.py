@@ -37,7 +37,7 @@ def adjust_categoric_values(df):
     return df
 
 def remove_unused_columns(df):
-    columns_to_remove = ['Name']
+    columns_to_remove = ['Name', 'Description']
     return df.drop(columns=columns_to_remove)
 
 # Função para aplicar todas as regras de limpeza e ajuste de dados
